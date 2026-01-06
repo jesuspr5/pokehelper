@@ -3,8 +3,31 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'models/type_model.dart'; // Asegúrate de que tu archivo se llame así
+import 'package:window_manager/window_manager.dart';
+import 'dart:io';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Configuración especial para Windows/Desktop
+  if (!kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
+    await windowManager.ensureInitialized();
+
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(400, 750), // Tamaño ideal tipo "móvil" en PC
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      title: "PokeTipos",
+      alwaysOnTop: true, // 👈 ¡La magia para que no se oculte al jugar!
+    );
+
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
+
   runApp(const PokeTypeApp());
 }
 
@@ -225,7 +248,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(
               width: 10,
             ), // Un pequeño espacio entre imagen y texto
-            const Text('PokeType Helper V-1.0'),
+            const Text('PokeTipos'),
           ],
         ),
         actions: [
@@ -371,10 +394,16 @@ class _HomePageState extends State<HomePage> {
                     contenido: Wrap(
                       key: ValueKey(misFortalezas.join(',')),
                       spacing: 8,
+                      runSpacing: 8.0,
                       children:
                           misFortalezas
                               .map(
                                 (t) => Chip(
+                                  visualDensity:
+                                      VisualDensity
+                                          .compact, // 👈 Hace el chip más pequeño
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   label: Text(t),
                                   backgroundColor: const Color.fromARGB(
                                     255,
@@ -398,11 +427,17 @@ class _HomePageState extends State<HomePage> {
                         'def-${misDebilidades.entries.where((e) => e.value > 1.0).map((e) => e.key).join()}',
                       ),
                       spacing: 8,
+                      runSpacing: 8.0,
                       children:
                           misDebilidades.entries
                               .where((e) => e.value > 1.0) // Solo debilidades
                               .map(
                                 (e) => Chip(
+                                  visualDensity:
+                                      VisualDensity
+                                          .compact, // 👈 Hace el chip más pequeño
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   label: Text('${e.key} x${e.value}'),
                                   backgroundColor: Colors.red.withValues(
                                     alpha: 0.3,
@@ -423,11 +458,17 @@ class _HomePageState extends State<HomePage> {
                         'inm-${misDebilidades.entries.where((e) => e.value == 0.0).map((e) => e.key).join()}',
                       ),
                       spacing: 8,
+                      runSpacing: 8.0,
                       children:
                           misDebilidades.entries
                               .where((e) => e.value == 0.0) // Solo inmunidades
                               .map(
                                 (e) => Chip(
+                                  visualDensity:
+                                      VisualDensity
+                                          .compact, // 👈 Hace el chip más pequeño
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                   label: Text(e.key),
                                   backgroundColor: Colors.grey.withValues(
                                     alpha: 0.5,
@@ -592,35 +633,60 @@ class _HomePageState extends State<HomePage> {
 
   // WIDGET AUXILIAR: Las tarjetas de arriba (Seleccionados)
   Widget _buildSelectedTypeCard(PokemonType? type) {
+    // Lógica para el color del texto: Si es Eléctrico o Hielo (colores claros),
+    // usamos texto negro, de lo contrario blanco.
+    final Color textColor =
+        (type?.name == 'Eléctrico' || type?.name == 'Hielo')
+            ? Colors.black
+            : Colors.white;
+
     return GestureDetector(
       onTap: () {
-        if (type != null) {
-          // Al tocar la tarjeta, usamos la lógica de toggle para quitarlo
-          _toggleType(type);
-        }
+        if (type != null) _toggleType(type);
       },
       child: Container(
         width: 110,
         height: 45,
         decoration: BoxDecoration(
           color: type?.color ?? Colors.grey.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-          // Si hay tipo, le ponemos un borde para indicar que es "clicable"
-          border: type != null ? Border.all(color: Colors.white24) : null,
+          borderRadius: BorderRadius.circular(10),
+          border:
+              type != null ? Border.all(color: Colors.white24, width: 1) : null,
         ),
-        alignment: Alignment.center,
+        // Usamos Stack para posicionar la X sin que toque el texto
         child: Stack(
-          alignment: Alignment.center,
           children: [
-            Text(
-              type?.name ?? '---',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            // Texto del tipo centrado
+            Center(
+              child: Text(
+                type?.name ?? '---',
+                style: TextStyle(
+                  color: textColor, // 👈 Aquí aplicamos el color dinámico
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
             ),
+            // Botón X pequeño en la esquina superior derecha
             if (type != null)
-              const Positioned(
-                right: 4,
+              Positioned(
                 top: 4,
-                child: Icon(Icons.close, size: 12, color: Colors.white70),
+                right: 4,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    // Un fondo oscuro sutil para que la X siempre se vea
+                    color: Colors.black.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    size: 10,
+                    color: textColor.withValues(
+                      alpha: 0.8,
+                    ), // Sigue la lógica del color del texto
+                  ),
+                ),
               ),
           ],
         ),
