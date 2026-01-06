@@ -29,6 +29,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool _mostrarBotonera = false;
   PokemonType? firstType;
   PokemonType? secondType;
   final TextEditingController _searchController = TextEditingController();
@@ -171,8 +172,7 @@ class _HomePageState extends State<HomePage> {
   void _toggleType(PokemonType type) {
     setState(() {
       if (firstType == type) {
-        firstType =
-            secondType; // Movemos el segundo al primero si quitamos el primero
+        firstType = secondType;
         secondType = null;
       } else if (secondType == type) {
         secondType = null;
@@ -180,9 +180,13 @@ class _HomePageState extends State<HomePage> {
         firstType = type;
       } else if (secondType == null) {
         secondType = type;
+        // --- MAGIA AQUÍ ---
+        // Si acabamos de seleccionar el segundo tipo, cerramos el panel
+        _mostrarBotonera = false;
       } else {
-        // Si ambos están llenos, reemplazamos el segundo
         secondType = type;
+        // También cerramos si reemplazamos el segundo tipo
+        _mostrarBotonera = false;
       }
     });
   }
@@ -330,10 +334,38 @@ class _HomePageState extends State<HomePage> {
                       _buildSelectedTypeCard(secondType),
                     ],
                   ),
+                  if (firstType != null || secondType != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: TextButton.icon(
+                        onPressed: limpiarSeleccion,
+                        icon: const Icon(
+                          Icons.delete_sweep_outlined,
+                          size: 20,
+                          color: Colors.redAccent,
+                        ),
+                        label: const Text(
+                          "Limpiar Tipos",
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.redAccent.withValues(
+                            alpha: 0.1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                    ),
 
                   // 1. --- SECCIÓN OFENSIVA (Haces x2) ---
                   _buildInfoSection(
-                    titulo: 'ATAQUE: Súper eficaz contra',
+                    titulo: 'ATK: Eficaz contra tipos',
                     icono: Icons.bolt,
                     colorIcono: Colors.yellowAccent,
                     contenido: Wrap(
@@ -358,7 +390,7 @@ class _HomePageState extends State<HomePage> {
 
                   // 2. --- SECCIÓN DEFENSIVA (Recibes x2 o x4) ---
                   _buildInfoSection(
-                    titulo: 'DEFENSA: Debil contra tipos',
+                    titulo: 'DEF: Debil contra tipos',
                     icono: Icons.shield,
                     colorIcono: Colors.redAccent,
                     contenido: Wrap(
@@ -383,7 +415,7 @@ class _HomePageState extends State<HomePage> {
 
                   // 3. --- SECCIÓN INMUNIDADES (Recibes x0) ---
                   _buildInfoSection(
-                    titulo: 'INMUNIDAD: inmune a los ataques de tipo ',
+                    titulo: 'INM: inmune al tipo ',
                     icono: Icons.shield_outlined,
                     colorIcono: Colors.white70,
                     contenido: Wrap(
@@ -414,62 +446,102 @@ class _HomePageState extends State<HomePage> {
           const Divider(height: 1),
 
           // --- BOTONERA ---
-          Expanded(
-            flex: 3,
-            child: GridView.builder(
-              padding: const EdgeInsets.all(10),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 2.4,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
+          Column(
+            children: [
+              ListTile(
+                title: const Text(
+                  "Selección de tipos",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+                trailing: Icon(
+                  _mostrarBotonera
+                      ? Icons.keyboard_arrow_down
+                      : Icons.keyboard_arrow_up,
+                ),
+                onTap: () {
+                  setState(() {
+                    _mostrarBotonera = !_mostrarBotonera;
+                  });
+                },
               ),
-              itemCount: myTypes.length,
-              itemBuilder: (context, index) {
-                final type = myTypes[index];
-                final isSelected = (firstType == type || secondType == type);
-                final textColor =
-                    (type.name == 'Eléctrico' || type.name == 'Hielo')
-                        ? Colors.black
-                        : Colors.white;
+              if (_mostrarBotonera)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  height: 250, // Ajusta la altura según tu pantalla
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(10),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          childAspectRatio: 2.4,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                    itemCount: myTypes.length,
+                    itemBuilder: (context, index) {
+                      final type = myTypes[index];
+                      final isSelected =
+                          (firstType == type || secondType == type);
+                      final textColor =
+                          (type.name == 'Eléctrico' || type.name == 'Hielo')
+                              ? Colors.black
+                              : Colors.white;
 
-                return AnimatedScale(
-                  scale:
-                      isSelected
-                          ? 1.05
-                          : 1.0, // Se hace un 5% más grande si está seleccionado
-                  duration: const Duration(milliseconds: 200),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: type.color,
-                      padding: EdgeInsets.zero,
-                      foregroundColor: Colors.white,
-                      side:
-                          isSelected
-                              ? const BorderSide(color: Colors.white, width: 3)
-                              : BorderSide.none,
-                    ),
-                    onPressed: () {
-                      _toggleType(type);
-                    },
-                    child: FittedBox(
-                      // 👈 Esto hace que el texto se encoja si no cabe
-                      fit: BoxFit.scaleDown,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Text(
-                          type.name,
-                          style: TextStyle(
-                            color: textColor,
-                            fontWeight: FontWeight.bold,
+                      return AnimatedScale(
+                        scale:
+                            isSelected
+                                ? 1.05
+                                : 1.0, // Se hace un 5% más grande si está seleccionado
+                        duration: const Duration(milliseconds: 200),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: type.color,
+                            padding: EdgeInsets.zero,
+                            foregroundColor: Colors.white,
+                            side:
+                                isSelected
+                                    ? const BorderSide(
+                                      color: Colors.white,
+                                      width: 3,
+                                    ) // Borde grueso si está seleccionado
+                                    : (type.name == 'Siniestro')
+                                    ? BorderSide(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      width: 1,
+                                    ) // Borde sutil para Siniestro
+                                    : BorderSide.none,
+                          ),
+                          onPressed: () {
+                            _toggleType(type);
+                          },
+                          child: FittedBox(
+                            // 👈 Esto hace que el texto se encoja si no cabe
+                            fit: BoxFit.scaleDown,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              child: Text(
+                                type.name,
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
+                ),
+            ],
           ),
         ],
       ),
@@ -520,17 +592,38 @@ class _HomePageState extends State<HomePage> {
 
   // WIDGET AUXILIAR: Las tarjetas de arriba (Seleccionados)
   Widget _buildSelectedTypeCard(PokemonType? type) {
-    return Container(
-      width: 110,
-      height: 45,
-      decoration: BoxDecoration(
-        color: type?.color ?? Colors.grey.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        type?.name ?? '---',
-        style: const TextStyle(fontWeight: FontWeight.bold),
+    return GestureDetector(
+      onTap: () {
+        if (type != null) {
+          // Al tocar la tarjeta, usamos la lógica de toggle para quitarlo
+          _toggleType(type);
+        }
+      },
+      child: Container(
+        width: 110,
+        height: 45,
+        decoration: BoxDecoration(
+          color: type?.color ?? Colors.grey.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+          // Si hay tipo, le ponemos un borde para indicar que es "clicable"
+          border: type != null ? Border.all(color: Colors.white24) : null,
+        ),
+        alignment: Alignment.center,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(
+              type?.name ?? '---',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (type != null)
+              const Positioned(
+                right: 4,
+                top: 4,
+                child: Icon(Icons.close, size: 12, color: Colors.white70),
+              ),
+          ],
+        ),
       ),
     );
   }
